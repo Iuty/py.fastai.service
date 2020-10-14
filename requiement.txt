@@ -1,0 +1,5 @@
+flask
+flask_restful
+flask_cors
+
+git+https://github.com/Iuty/IutyLib.git
