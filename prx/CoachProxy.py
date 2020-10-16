@@ -72,6 +72,7 @@ class CoachProxy:
                     checkpoint_path = os.path.join(ins_CoachProxy.savedir, 'model.ckpt')
                     ins_CoachProxy.saver.save(ins_CoachProxy.sess, checkpoint_path, global_step=ins_CoachProxy.curstep)
                     if ins_CoachProxy.test_logit != None:
+                        saver = tf.train.Saver()
                         with tf.Session() as sess:
                             sess.run(tf.global_variables_initializer())
                 
