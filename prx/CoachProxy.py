@@ -4,15 +4,11 @@ import datetime,os
 from prx.PathProxy import PathProxy
 from prx.ClassProxy import ClassProxy
 
-from object.Coach import CNNDivCoach
 
 import numpy as np
 import tensorflow as tf
 
-
-import win32api
-import win32event
-import win32process
+import importlib
 
 from multiprocessing import Process
 
@@ -70,20 +66,29 @@ class CoachProxy:
             #_ = ins_CoachProxy.sess.run([ins_CoachProxy.train_op])
             ins_CoachProxy.curstep += 1
             
-            
-            
-            
             if ins_CoachProxy.curstep % ins_CoachProxy.period == 0:
-                if ins_CoachProxy.test_logit != None:
-                    test_loss, test_acc = ins_CoachProxy.sess.run([ins_CoachProxy.test_loss, ins_CoachProxy.test_acc])
-                summary_op = ins_CoachProxy.sess.run(ins_CoachProxy.summary_op)
-                ins_CoachProxy.writer.add_summary(summary_op,ins_CoachProxy.curstep)
-                print('Step %d, train loss = %.2f, train accuracy = %.2f%%' % (ins_CoachProxy.curstep, tra_loss, tra_acc * 100.0))
                 
                 if ins_CoachProxy.curstep // ins_CoachProxy.period % ins_CoachProxy.saveperiod == 0:
                     checkpoint_path = os.path.join(ins_CoachProxy.savedir, 'model.ckpt')
                     ins_CoachProxy.saver.save(ins_CoachProxy.sess, checkpoint_path, global_step=ins_CoachProxy.curstep)
-                    
+                    if ins_CoachProxy.test_logit != None:
+                        with tf.Session() as sess:
+                            sess.run(tf.global_variables_initializer())
+                
+                            ckpt = tf.train.get_checkpoint_state(ins_CoachProxy.savedir)
+                
+                            if ckpt and ckpt.model_checkpoint_path:
+                                model_name = ckpt.model_checkpoint_path.split('\\')[-1]
+                                global_step = model_name.split('-')[-1]
+                                saverpath = os.path.join(ins_CoachProxy.savedir,model_name)
+                                saver.restore(sess, saverpath)
+                                sess.graph.as_default()
+            
+                                test_loss, test_acc = sess.run([ins_CoachProxy.test_loss, ins_CoachProxy.test_acc])
+                                
+                summary_op = ins_CoachProxy.sess.run(ins_CoachProxy.summary_op)
+                ins_CoachProxy.writer.add_summary(summary_op,ins_CoachProxy.curstep)
+                print('Step %d, train loss = %.2f, train accuracy = %.2f%%' % (ins_CoachProxy.curstep, tra_loss, tra_acc * 100.0))
                 
                 if not ins_CoachProxy.runflag:
                     ins_CoachProxy.closeSession()
@@ -121,32 +126,38 @@ class CoachProxy:
     
     def getInput(modeltype,paramcfg,dir):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getInputData(paramcfg,dir)
+            module_ipt = importlib.import_module("object.ipt_div")
+            return module_ipt.getInputData(paramcfg,dir)
         pass
     
     def getBatch(modeltype,paramcfg,images,labels):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getBatch(paramcfg,images,labels)
+            module_ipt = importlib.import_module("object.ipt_div")
+            return module_ipt.getBatch(paramcfg,images,labels)
         pass
     
     def getLogit(modeltype,paramcfg,image_batch,batch_size = None):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getLogit(paramcfg,image_batch,batch_size)
+            module_mdl = importlib.import_module("object.mdl_div")
+            return module_mdl.getLogit(paramcfg,image_batch,batch_size)
         pass
     
     def getLoss(modeltype,paramcfg,logits,labels):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getLoss(paramcfg,logits,labels)
+            module_mdl = importlib.import_module("object.mdl_div")
+            return module_mdl.getLoss(paramcfg,logits,labels)
         pass
     
     def getTrain(modeltype,paramcfg,loss):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getTrain(paramcfg,loss)
+            module_mdl = importlib.import_module("object.mdl_div")
+            return module_mdl.getTrain(paramcfg,loss)
         pass
     
     def getEnvaluation(modeltype,paramcfg,logit,labels):
         if modeltype == "cnn-div":
-            return CNNDivCoach.getEnvaluation(paramcfg,logit,labels)
+            module_mdl = importlib.import_module("object.mdl_div")
+            return module_mdl.getEnvaluation(paramcfg,logit,labels)
         pass
     
     def closeSession(self):
