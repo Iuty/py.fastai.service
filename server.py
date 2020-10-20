@@ -10,6 +10,8 @@ from flask_cors import *
 import multiprocessing
 from prx.PathProxy import PathProxy
 
+import tensorflow as tf
+
 from api.project_ import *
 from api.class_ import *
 from api.train_ import *
@@ -20,6 +22,8 @@ project_path = PathProxy.project_path
 PathProxy.mkdir(project_path)
 
 app_log = SimpleLog(os.path.join(app_path,"logs")+"\\")
+
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 config = Config(PathProxy.getConfigPath())
 

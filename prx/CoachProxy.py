@@ -35,6 +35,7 @@ class CoachProxy:
         #CoachProxy.runTensorBoard(os.path.join(modelpath,"log"))
         p = Process(target=CoachProxy.runTensorBoard,args=[os.path.join(modelpath,"log"),])
         p.start()
+        
         return rtn
         
         
@@ -62,33 +63,28 @@ class CoachProxy:
             if ins_CoachProxy.curstep > ins_CoachProxy.period * ins_CoachProxy.maxperiod:
                 return False
             
-            _, tra_loss, tra_acc = ins_CoachProxy.sess.run([ins_CoachProxy.train_op, ins_CoachProxy.train_loss, ins_CoachProxy.train_acc])
+            _,tra_loss,tra_acc = ins_CoachProxy.trainModel()
             #_ = ins_CoachProxy.sess.run([ins_CoachProxy.train_op])
             ins_CoachProxy.curstep += 1
             
             if ins_CoachProxy.curstep % ins_CoachProxy.period == 0:
                 
+                t_,t_loss,t_acc = ins_CoachProxy.testModel()
+                
+                scalar_train_loss = tf.summary.scalar('test'+'/loss', tra_loss)
+                scalar_train_acc = tf.summary.scalar('test'+'/accuracy', tra_acc)
+                
+                if t_:
+                    scalar_test_loss = tf.summary.scalar('test'+'/loss', t_loss)
+                    scalar_test_acc = tf.summary.scalar('test'+'/accuracy', t_acc)
+                    summary_op = tf.summary.merge([scalar_train_loss,scalar_train_acc,scalar_test_loss,scalar_test_acc])
+                else:
+                    summary_op = tf.summary.merge([scalar_train_loss,scalar_train_acc])
+                
+                ins_CoachProxy.summaryTrain()
                 if ins_CoachProxy.curstep // ins_CoachProxy.period % ins_CoachProxy.saveperiod == 0:
-                    checkpoint_path = os.path.join(ins_CoachProxy.savedir, 'model.ckpt')
-                    ins_CoachProxy.saver.save(ins_CoachProxy.sess, checkpoint_path, global_step=ins_CoachProxy.curstep)
-                    if ins_CoachProxy.test_logit != None:
-                        saver = tf.train.Saver()
-                        with tf.Session() as sess:
-                            sess.run(tf.global_variables_initializer())
+                    ins_CoachProxy.saveModel()
                 
-                            ckpt = tf.train.get_checkpoint_state(ins_CoachProxy.savedir)
-                
-                            if ckpt and ckpt.model_checkpoint_path:
-                                model_name = ckpt.model_checkpoint_path.split('\\')[-1]
-                                global_step = model_name.split('-')[-1]
-                                saverpath = os.path.join(ins_CoachProxy.savedir,model_name)
-                                saver.restore(sess, saverpath)
-                                sess.graph.as_default()
-            
-                                test_loss, test_acc = sess.run([ins_CoachProxy.test_loss, ins_CoachProxy.test_acc])
-                                
-                summary_op = ins_CoachProxy.sess.run(ins_CoachProxy.summary_op)
-                ins_CoachProxy.writer.add_summary(summary_op,ins_CoachProxy.curstep)
                 print('Step %d, train loss = %.2f, train accuracy = %.2f%%' % (ins_CoachProxy.curstep, tra_loss, tra_acc * 100.0))
                 
                 if not ins_CoachProxy.runflag:
@@ -186,14 +182,18 @@ class CoachProxy:
             
             train_images_batch,train_labels_batch = CoachProxy.getBatch(modeltype,param,train_images,train_labels)
             
-            train_logit = CoachProxy.getLogit(modeltype,param,train_images_batch)
+            x = tf.placeholder(shape = train_images_batch.shape,dtype=train_images_batch.dtype,name="data_batch")
+            y = tf.placeholder(shape = train_labels_batch.shape,dtype=train_labels_batch.dtype,name="label_batch")
             
-            train_loss = CoachProxy.getLoss(modeltype,param,train_logit,train_labels_batch)
+            train_logit = CoachProxy.getLogit(modeltype,param,x)
+            
+            train_loss = CoachProxy.getLoss(modeltype,param,train_logit,y)
             
             train_op = CoachProxy.getTrain(modeltype,param,train_loss)
             
-            train_acc = CoachProxy.getEnvaluation(modeltype,param,train_logit,train_labels_batch)
-            
+            train_acc = CoachProxy.getEnvaluation(modeltype,param,train_logit,y)
+            self.train_images_batch = train_images_batch
+            self.train_labels_batch = train_labels_batch
             self.train_logit = train_logit
             self.train_loss = train_loss
             self.train_op = train_op
@@ -204,36 +204,26 @@ class CoachProxy:
             test_dir = PathProxy.getProjectTestDir(projectname)
             test_images,test_labels = CoachProxy.getInput(modeltype,param,test_dir)
             
+            self.test_dir = test_dir
+            self.test_images = test_images
+        
             if len(test_images) > 0:
                 test_images_batch,test_labels_batch = CoachProxy.getBatch(modeltype,param,test_images,test_labels)
             
-                test_logit = CoachProxy.getLogit(modeltype,param,test_images_batch)
-            
-                test_loss = CoachProxy.getLoss(modeltype,param,test_logit,test_labels_batch)
-            
-                test_acc = CoachProxy.getEnvaluation(modeltype,param,test_logit,test_labels_batch)
+                self.test_images_batch = test_images_batch
+                self.test_labels_batch = test_labels_batch
                 
-                self.test_logit = test_logit
-                self.test_loss = test_loss
-                
-                self.test_acc = test_acc
-            else:
-                self.test_logit = None
-                self.test_loss = None
-                
-                self.test_acc = None
-        
-        scalar_loss = tf.summary.scalar('train'+'/loss', self.train_loss)
-        scalar_acc = tf.summary.scalar('train'+'/accuracy', self.train_acc)
         
         
-        if self.test_logit != None:
-            scalar_test_loss = tf.summary.scalar('test'+'/loss', self.test_loss)
-            scalar_test_acc = tf.summary.scalar('test'+'/accuracy', self.test_acc)
-            self.summary_op = tf.summary.merge([scalar_loss,scalar_acc,scalar_test_loss,scalar_test_acc])
-            
-        else:
-            self.summary_op = tf.summary.merge([scalar_loss,scalar_acc])
+        #self.summary_op = tf.summary.merge([scalar_tra_loss,scalar_tra_acc,scalar_test_loss,scalar_test_acc])
+        self.dict_summary = {"train/loss":0.0,"train/accuracy":0.0,"test/loss":0.0,"test/accuracy":0.0}
+        list_merge = []
+        for k in self.dict_summary:
+            v = self.getSummary(k)
+            sc = tf.summary.scalar(k, v)
+            list_merge.append(sc)
+        self.summary_op = tf.summary.merge(list_merge)
+        
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -255,10 +245,51 @@ class CoachProxy:
         PathProxy.mkdir(self.logdir)
         
         self.writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
+        #print(CoachProxy.getInput(modeltype,param,train_dir))
         
         return True
     
+    def saveModel(self):
+        checkpoint_path = os.path.join(self.savedir, 'model.ckpt')
+        self.saver.save(self.sess, checkpoint_path, global_step=self.curstep)
+        pass
     
+    def trainModel(self):
+        graph = self.sess.graph
+        
+        x = graph.get_tensor_by_name("data_batch:0")
+        y = graph.get_tensor_by_name("label_batch:0")
+        x_,y_ = self.sess.run([self.train_images_batch,self.train_labels_batch])
+        _, tra_loss, tra_acc = self.sess.run([self.train_op, self.train_loss, self.train_acc],feed_dict={x:x_,y:y_})
+        self.dict_summary["train/loss"] = tra_loss
+        self.dict_summary["train/accuracy"] = tra_acc
+        return _,tra_loss,tra_acc
+    
+    def testModel(self):
+        if len(self.test_images) == 0:
+            return False,None,None
+        graph = self.sess.graph
+        
+        x = graph.get_tensor_by_name("data_batch:0")
+        y = graph.get_tensor_by_name("label_batch:0")
+        x_,y_ = self.sess.run([self.test_images_batch,self.test_labels_batch])
+        t_logit,t_loss,t_acc = self.sess.run([self.train_logit,self.train_loss,self.train_acc],feed_dict={x:x_,y:y_})
+        self.dict_summary["test/loss"] = t_loss
+        self.dict_summary["test/accuracy"] = t_acc
+        return True,t_loss,t_acc
+        pass
+    
+    def getSummary(self,key):
+        if key in self.dict_summary:
+            return tf.constant(self.dict_summary[key],dtype=tf.float32)
+        else:
+            return tf.constant(0.0,dtype=tf.float32)
+    
+    def summaryTrain(self):
+        print(self.dict_summary)
+        summary_op = self.sess.run(self.summary_op)
+        self.writer.add_summary(summary_op,self.curstep)
+        pass
     
     pass
     

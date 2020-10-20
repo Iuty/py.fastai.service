@@ -5,28 +5,33 @@ import tensorflow as tf
 
     
 def getLogit(config,image_batch,batch_size):
+    
     if batch_size == None:
         batch_size = config.Batch()
+    imgd = config.Depth()
+    if config.GroupEnable():
+        imgd = len(config.Groups())
     conv1_depth = config.Conv1Depth()
     conv2_depth = config.Conv2Depth()
     class_count = len(config.Classes())
     with tf.variable_scope('conv1') as scope:
-        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, 3, conv1_depth], stddev=1.0, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, imgd, conv1_depth], stddev=1.0, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
-
+        
         biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[conv1_depth]),
                             name='biases', dtype=tf.float32)
-
+        
         conv = tf.nn.conv2d(image_batch, weights, strides=[1, 1, 1, 1], padding='SAME')
+        
         pre_activation = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
-
+    
     # 池化层1
     # 3x3最大池化，步长strides为2，池化后执行lrn()操作，局部响应归一化，对训练有利。
     with tf.variable_scope('pooling1_lrn') as scope:
         pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling1')
         norm1 = tf.nn.lrn(pool1, depth_radius=4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
-
+    
     # 卷积层2
     # 16个3x3的卷积核（16通道），padding=’SAME’，表示padding后卷积的图与原图尺寸一致，激活函数relu()
     with tf.variable_scope('conv2') as scope:
@@ -84,7 +89,7 @@ def getLogit(config,image_batch,batch_size):
                             name='biases', dtype=tf.float32)
 
         softmax_linear = tf.add(tf.matmul(local4, weights), biases, name='softmax_linear')
-
+    
     return softmax_linear
         
 def getLoss(config,logits,labels):

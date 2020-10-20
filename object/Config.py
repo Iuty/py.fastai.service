@@ -43,12 +43,20 @@ class CNNDivSetting(ProjectSetting):
         ('Image','width','64'),
         ('Image','height','64'),
         ('Image','depth','3'),
-        ('Image','formatter','jpg'),
+        ('Image','formatter','bmp'),
+        
+        ('ImgGroup','enable','1'),
+        ('ImgGroup','0','0'),
+        ('ImgGroup','1','1'),
+        ('ImgGroup','2','2'),
+        ('ImgGroup','3','3'),
+        ('ImgGroup','4','4'),
+        ('ImgGroup','5','5'),
         
         ('Train','batch','128'),
         ('Train','learnrate','0.0001'),
-        ('Train','period','100'),
-        ('Train','saveperiod','0'),
+        ('Train','period','10'),
+        ('Train','saveperiod','10'),
         ('Train','maxperiod','100000'),
         
         ('Logit','conv1depth','32'),
@@ -145,4 +153,30 @@ class CNNDivParam(CNNTrainParam):
                 break
         
         return classes
+    
+    def GroupEnable(self):
+        try:
+            v = int(self._config.get("ImgGroup","enable"))
+            return bool(v)
+        except:
+            return False
+    
+    def Groups(self):
+        groups = {}
+        for i in range(0,1000):
+            groupname = self._config.get("ImgGroup",str(i))
+            if groupname:
+                groups[str(i)] = groupname
+            else:
+                break
+        
+        return groups
+    
+    #overwrite depth
+    def Depth(self):
+        if self.GroupEnable():
+            return len(self.Groups())
+        else:
+            return int(self._config.get("Image","depth"))
     pass
+    
