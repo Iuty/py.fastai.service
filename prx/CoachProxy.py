@@ -219,8 +219,9 @@ class CoachProxy:
         self.dict_summary = {"train/loss":0.0,"train/accuracy":0.0,"test/loss":0.0,"test/accuracy":0.0}
         list_merge = []
         for k in self.dict_summary:
-            v = self.getSummary(k)
-            sc = tf.summary.scalar(k, v)
+            
+            sh = tf.placeholder(shape=[],dtype=tf.float32,name=k)
+            sc = tf.summary.scalar(k, sh)
             list_merge.append(sc)
         self.summary_op = tf.summary.merge(list_merge)
         
@@ -287,7 +288,14 @@ class CoachProxy:
     
     def summaryTrain(self):
         print(self.dict_summary)
-        summary_op = self.sess.run(self.summary_op)
+        feed = self.dict_summary
+        graph = self.sess.graph
+        
+        tr_los = graph.get_tensor_by_name("train/loss:0")
+        tr_acc = graph.get_tensor_by_name("train/accuracy:0")
+        te_los = graph.get_tensor_by_name("test/loss:0")
+        te_acc = graph.get_tensor_by_name("test/accuracy:0")
+        summary_op = self.sess.run(self.summary_op,feed_dict={tr_los:feed["train/loss"],tr_acc:feed["train/accuracy"]*100.0,te_los:feed["test/loss"],te_acc:["test/accuracy"]*100.0})
         self.writer.add_summary(summary_op,self.curstep)
         pass
     
