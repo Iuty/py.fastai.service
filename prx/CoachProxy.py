@@ -295,7 +295,7 @@ class CoachProxy:
         tr_acc = graph.get_tensor_by_name("train/accuracy:0")
         te_los = graph.get_tensor_by_name("test/loss:0")
         te_acc = graph.get_tensor_by_name("test/accuracy:0")
-        summary_op = self.sess.run(self.summary_op,feed_dict={tr_los:feed["train/loss"],tr_acc:feed["train/accuracy"]*100.0,te_los:feed["test/loss"],te_acc:["test/accuracy"]*100.0})
+        summary_op = self.sess.run(self.summary_op,feed_dict={tr_los:feed["train/loss"],tr_acc:feed["train/accuracy"]*100.0,te_los:feed["test/loss"],te_acc:feed["test/accuracy"]*100.0})
         self.writer.add_summary(summary_op,self.curstep)
         pass
     
