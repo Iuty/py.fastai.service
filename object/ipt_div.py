@@ -29,44 +29,52 @@ def getGroupHead(filename):
         
         success = True
         return success,fgname
-    
-    
-def getInputData(config,dir):
+
+def walkDir(config,dir,cls = "0"):
     formatter = config.Formatter()
     data = []
     label = []
+    for mdir,subdir,filename in os.walk(dir):
+        if len(filename) > 0:
+            for f in filename:
+                fsplit = f.split('.')
+                if len(fsplit)>1:
+                    if fsplit[-1] == formatter:
+                        #group
+                        if config.GroupEnable():
+                            succ,fghead = getGroupHead(fsplit[0])
+                                
+                            if succ:
+                                    
+                                if os.path.join(mdir,fghead) in data:
+                                        
+                                    continue
+                                else:
+                                    suc = checkGroup(config,mdir,fghead)
+                                        
+                                    if suc:
+                                        data.append(os.path.join(mdir,fghead))
+                                        label.append(int(cls))
+                                    else:
+                                        continue
+                            else:
+                                continue
+                        #single
+                        else:
+                            data.append(os.path.join(mdir,f))
+                            label.append(int(cls))
+    return data,label
+    
+def getInputData(config,dir):
+    
     classes = config.Classes()
+    data = []
+    label = []
     for cls in classes:
         #for mdir,subdir,filename in os.walk(dir+cls+"_"+classes[cls]):
-        for mdir,subdir,filename in os.walk(dir+classes[cls]):
-            if len(filename) > 0:
-                for f in filename:
-                    fsplit = f.split('.')
-                    if len(fsplit)>1:
-                        if fsplit[-1] == formatter:
-                            #group
-                            if config.GroupEnable():
-                                succ,fghead = getGroupHead(fsplit[0])
-                                
-                                if succ:
-                                    
-                                    if os.path.join(mdir,fghead) in data:
-                                        
-                                        continue
-                                    else:
-                                        suc = checkGroup(config,mdir,fghead)
-                                        
-                                        if suc:
-                                            data.append(os.path.join(mdir,fghead))
-                                            label.append(int(cls))
-                                        else:
-                                            continue
-                                else:
-                                    continue
-                            #single
-                            else:
-                                data.append(os.path.join(mdir,f))
-                                label.append(int(cls))
+        d,l = walkDir(config,os.path.join(dir,classes[cls]),cls)
+        data += d
+        label += l
                                 
     
     temp = np.array([data, label])
@@ -110,7 +118,7 @@ def readGroup(config,files):
     
     return image_group
 
-def getBatch(config,images,labels):
+def getBatch(config,images,labels,batch = None):
     imgw = config.Width()
     imgh = config.Height()
     imgd = config.Depth()
@@ -119,6 +127,8 @@ def getBatch(config,images,labels):
     group = config.GroupEnable()
     
     batch_size = config.Batch()
+    if batch:
+        batch_size = batch
     
     image = tf.cast(images, tf.string)
     label = tf.cast(labels, tf.int32)

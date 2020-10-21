@@ -27,7 +27,7 @@ class TestProxy:
             #return rtn
         
         
-        succ,data = TestProxy.doTest(project,tag,path)
+        succ,data = TestProxy.doTestImage(project,tag,path)
         if not succ:
             rtn['error'] = data
             return rtn
@@ -35,6 +35,17 @@ class TestProxy:
         rtn['success'] = True
         return rtn
     
+    def testDirectory(project,tag,path):
+        rtn = {'success':False}
+        
+        succ,data = TestProxy.doTestDirectory(project,tag,path)
+        if not succ:
+            rtn['error'] = data
+            return rtn
+        rtn['data'] = data
+        rtn['success'] = True
+        return rtn
+        
     """
     methods here
     """
@@ -86,7 +97,7 @@ class TestProxy:
         success = True
         return success,group_array
     
-    def testOnePicture(projectname,tag,param,image_array):
+    def testOnePicture(projectname,tag,param,image_array,image_name,BATCH_SIZE=1):
         success = False
         classes = param.Classes()
         picw = param.Width()
@@ -105,17 +116,16 @@ class TestProxy:
             
         #with tf.Graph().as_default():
         if True:
-            BATCH_SIZE = 1
-            
+        
             image = tf.cast(image_array, tf.float32)
             image = tf.image.per_image_standardization(image)
-            image = tf.reshape(image, [1, picw, pich, picd])
+            image = tf.reshape(image, [BATCH_SIZE, picw, pich, picd])
 
             logit = CoachProxy.getLogit(model_type,param,image,BATCH_SIZE)
 
             logit = tf.nn.softmax(logit)
 
-            x = tf.placeholder(tf.float32, shape=[picw, pich, picd])
+            x = tf.placeholder(tf.float32, shape=[BATCH_SIZE,picw, pich, picd])
 
             # you need to change the directories to yours.
             modelpath = PathProxy.getModelTagDir(projectname,tag)
@@ -143,13 +153,11 @@ class TestProxy:
                 sess.graph.as_default()
                 img = sess.run(image_array)
                 prediction = sess.run(logit, feed_dict={x: img})
-                max_index = np.argmax(prediction)
-                
-                result_data = {"mightbe":None,"mightpercent":None,"result":{}}
-                result_data["mightbe"] = classes[str(max_index)]
-                result_data["mightpercent"] = str(round(prediction[0, max_index]*100,2))
-                for cls in classes:
-                    result_data["result"][classes[cls]] = str(round(prediction[0, int(cls)]*100,2))
+                result_data = []
+                for i in range(BATCH_SIZE):
+                    mightbe = np.argmax(prediction[i])
+                    d = {"image":image_name[i],"result":classes[str(mightbe)],"percent":str(round(prediction[i][mightbe]*100.0,2))}
+                    result_data.append(d)
                 
                 
                 success = True
@@ -158,8 +166,12 @@ class TestProxy:
     
     
     
-    def doTest(projectname,tag,path):
+    def doTestImage(projectname,tag,path):
         success = False
+        
+        if not os.path.isfile(path):
+            error = "path is not a file or path is not exists"
+            return success,error
         
         param = CNNDivParam(projectname,tag)
         if not param.Exists():
@@ -167,17 +179,74 @@ class TestProxy:
             return success,error
         
         group = param.GroupEnable()
+        imgw = param.Width()
+        imgh = param.Height()
+        imgd = param.Depth()
         if group:
+            imgd = len(param.Groups())
             succ,pic_array = TestProxy.readGroup(param,path)
         else:
             succ,pic_array = TestProxy.readImage(param,path)
         if not succ:
             error = pic_array
             return success,error
+        tf_pic_array = tf.reshape(pic_array,shape=[1,imgw,imgh,imgd])
         #s = datetime.datetime.now()
-        success,test_result = TestProxy.testOnePicture(projectname,tag,param,pic_array)
+        success,test_result = TestProxy.testOnePicture(projectname,tag,param,tf_pic_array,os.path.basename(path))
         #e = datetime.datetime.now()
         
     
         return success,test_result
+    
+    def doTestDirectory(projectname,tag,path):
+        success = False
         
+        if not os.path.isdir(path):
+            error = "path is not a directory or path is not exists"
+            return success,error
+        
+        param = CNNDivParam(projectname,tag)
+        if not param.Exists():
+            error = "Model is not exists"
+            return success,error
+        
+        module_ipt = importlib.import_module("object.ipt_div")
+        file_list,label_list = module_ipt.walkDir(param,path)
+        
+        group = param.GroupEnable()
+        imgw = param.Width()
+        imgh = param.Height()
+        imgd = param.Depth()
+        
+        if group:
+            imgd = len(param.Groups())
+        data = []
+        pic_array_list = []
+        for f in file_list:
+            
+            if group:
+                dv = param.Groups()["0"]
+                fmt = param.Formatter()
+                fname = f + "_" + dv + "." + fmt
+                succ,pic_array = TestProxy.readGroup(param,fname)
+            else:
+                succ,pic_array = TestProxy.readImage(param,f)
+            if not succ:
+                continue
+            pic_array_list.append(pic_array)
+        tf_pic_array = tf.reshape(pic_array_list,shape=[len(pic_array_list),imgw,imgh,imgd])
+        
+        succ,test_result = TestProxy.testOnePicture(projectname,tag,param,tf_pic_array,[os.path.basename(pt) for pt in file_list],len(pic_array_list))
+        print(test_result)
+        """
+        if not succ:
+            continue
+        d = {"file":os.path.basename(f),"data":test_result}
+        data.append(d)
+        #s = datetime.datetime.now()
+        print(d)
+        os.system("pause")
+        #e = datetime.datetime.now()
+        """
+        #success = True
+        return succ,test_result
