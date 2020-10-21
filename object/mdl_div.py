@@ -14,6 +14,8 @@ def getLogit(config,image_batch,batch_size):
     conv1_depth = config.Conv1Depth()
     conv2_depth = config.Conv2Depth()
     class_count = len(config.Classes())
+    
+    
     with tf.variable_scope('conv1') as scope:
         weights = tf.Variable(tf.truncated_normal(shape=[3, 3, imgd, conv1_depth], stddev=1.0, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
@@ -116,18 +118,5 @@ def getEnvaluation(config,logits,labels):
         accuracy = tf.reduce_mean(correct)
         tf.summary.scalar(scope.name + '/accuracy', accuracy)
     return accuracy
-    
 
-    train_loss = CNNDivCoach.getLoss(train_logit,train_label_batch)
-    test_loss = CNNDivCoach.getLoss(test_logit,test_label_batch)
-    
-    
-    learning_rate = float(cfg.get("Train","learnrate"))
-    train_op = CNNDivCoach.getTrain(train_loss,learning_rate)
-    
-    
-    train_acc = CNNDivCoach.getEnvaluation(train_logit,train_label_batch)
-    test_acc = CNNDivCoach.getEnvaluation(test_logit,test_label_batch)
-    return train_logit,train_loss,train_op,train_acc,test_logit,test_loss,test_acc
-    
 

@@ -157,7 +157,8 @@ def getBatch(config,images,labels):
     # image_batch: 4D tensor [batch_size, width, height, 3],dtype=tf.float32
     # label_batch: 1D tensor [batch_size], dtype=tf.int32
     
-    image_batch, label_batch = tf.train.batch([image, label],batch_size=batch_size,num_threads=4,capacity=max(batch_size,len(images)))
+    #image_batch, label_batch = tf.train.batch([image, label],batch_size=batch_size,num_threads=4,capacity=max(batch_size,len(images)))
+    image_batch, label_batch = tf.train.shuffle_batch([image, label],batch_size=batch_size,num_threads=4,capacity=max(batch_size,len(images))*2,min_after_dequeue=min(batch_size,len(images))*2)
     label_batch = tf.reshape(label_batch, [batch_size])
     
     image_batch = tf.cast(image_batch, tf.float32)
