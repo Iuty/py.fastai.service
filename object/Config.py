@@ -93,7 +93,7 @@ class CNNTrainParam:
         self._config = Config(path)
         pass
     
-    def Exists():
+    def Exists(self):
         return self._exists
     
     def set(self,secticon,key,value):

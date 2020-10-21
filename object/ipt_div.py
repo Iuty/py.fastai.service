@@ -9,6 +9,7 @@ def checkGroup(config,dirpath,filehead):
     formatter = config.Formatter()
     for k in gs:
         fpath = os.path.join(dirpath,filehead+"_"+gs[k]+"."+formatter)
+        
         if not os.path.exists(fpath):
             return False
     return True

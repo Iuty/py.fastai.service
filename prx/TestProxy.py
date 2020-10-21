@@ -13,6 +13,7 @@ from prx.CoachProxy import CoachProxy
 #from prx.CoachProxy import ins_CoachProxy
 from object.Config import CNNDivParam
 
+import importlib
 
 class TestProxy:
     """
@@ -26,8 +27,8 @@ class TestProxy:
             #return rtn
         
         
-        success,data = TestProxy.doTest(project,tag,path)
-        if not success:
+        succ,data = TestProxy.doTest(project,tag,path)
+        if not succ:
             rtn['error'] = data
             return rtn
         rtn['data'] = data
@@ -37,6 +38,7 @@ class TestProxy:
     """
     methods here
     """
+    ####abort
     def readPicture(param,path):
         success = False
         #exists?
@@ -51,12 +53,49 @@ class TestProxy:
         return success,image
         
     
+    def readImage(param,path):
+        success = False
+        if not os.path.exists(path):
+            error = "this image is not exists"
+            return success,error
+        
+        module_ipt = importlib.import_module("object.ipt_div")
+        image_array = module_ipt.readImg(param,path)
+        
+        success = True
+        return success,image_array
+    
+    def readGroup(param,path):
+        success = False
+        module_ipt = importlib.import_module("object.ipt_div")
+        filename = os.path.basename(path)
+        filepath = os.path.dirname(path)
+        
+        succ,headname = module_ipt.getGroupHead(filename)
+        if not succ:
+            error = "get group head error"
+            return success,error
+        
+        succ = module_ipt.checkGroup(param,filepath,headname)
+        if not succ:
+            error = "this group is not satisfied group rules"
+            return success,error
+        grouppath = os.path.join(filepath,headname)
+        group_array = module_ipt.readGroup(param,grouppath)
+        
+        success = True
+        return success,group_array
+    
     def testOnePicture(projectname,tag,param,image_array):
         success = False
         classes = param.Classes()
         picw = param.Width()
         pich = param.Height()
         picd = param.Depth()
+        
+        group = param.GroupEnable()
+        if group:
+            picd = len(param.Groups())
         N_CLASSES = len(classes)
         
         model_type = param.Type()
@@ -64,10 +103,10 @@ class TestProxy:
             error = "model has less than one classes"
             return success,error
             
-        with tf.Graph().as_default():
+        #with tf.Graph().as_default():
+        if True:
             BATCH_SIZE = 1
             
-
             image = tf.cast(image_array, tf.float32)
             image = tf.image.per_image_standardization(image)
             image = tf.reshape(image, [1, picw, pich, picd])
@@ -100,10 +139,10 @@ class TestProxy:
                 else:
                     print(ckpt)
                     print('No checkpoint file found')
-                print(sess.graph)
+                
                 sess.graph.as_default()
-            
-                prediction = sess.run(logit, feed_dict={x: image_array})
+                img = sess.run(image_array)
+                prediction = sess.run(logit, feed_dict={x: img})
                 max_index = np.argmax(prediction)
                 
                 result_data = {"mightbe":None,"mightpercent":None,"result":{}}
@@ -116,22 +155,29 @@ class TestProxy:
                 success = True
                 
                 return success,result_data
-            
+    
+    
+    
     def doTest(projectname,tag,path):
         success = False
         
         param = CNNDivParam(projectname,tag)
-        if not param.Exists:
+        if not param.Exists():
             error = "Model is not exists"
             return success,error
-        success,pic_array = TestProxy.readPicture(param,path)
-        if not success:
-            error = "read picture error at path:" + path
+        
+        group = param.GroupEnable()
+        if group:
+            succ,pic_array = TestProxy.readGroup(param,path)
+        else:
+            succ,pic_array = TestProxy.readImage(param,path)
+        if not succ:
+            error = pic_array
             return success,error
         #s = datetime.datetime.now()
         success,test_result = TestProxy.testOnePicture(projectname,tag,param,pic_array)
         #e = datetime.datetime.now()
-        print(test_result)
+        
     
         return success,test_result
         
