@@ -42,8 +42,9 @@ class TestProxy:
         if not succ:
             rtn['error'] = data
             return rtn
-        rtn['data'] = data
         rtn['statistics'] = TestProxy.getStatistics(data)
+        rtn['data'] = data
+        
         rtn['success'] = True
         return rtn
         
