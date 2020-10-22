@@ -43,12 +43,21 @@ class TestProxy:
             rtn['error'] = data
             return rtn
         rtn['data'] = data
+        rtn['statistics'] = TestProxy.getStatistics(data)
         rtn['success'] = True
         return rtn
         
     """
     methods here
     """
+    def getStatistics(test_result):
+        result = {}
+        for item in test_result:
+            if not item["result"] in result:
+                result[item["result"]] = 0
+            result[item["result"]] += 1
+        return result
+    
     ####abort
     def readPicture(param,path):
         success = False
