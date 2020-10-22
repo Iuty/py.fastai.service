@@ -161,6 +161,8 @@ class CoachProxy:
         self.coord.request_stop()
         self.coord.join(self.threads)
         self.sess.close()
+        tf.reset_default_graph() 
+    
     
     def stopTrain(self):
         self.runflag = False
