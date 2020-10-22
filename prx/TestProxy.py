@@ -247,7 +247,7 @@ class TestProxy:
         tf_pic_array = tf.reshape(pic_array_list,shape=[len(pic_array_list),imgw,imgh,imgd])
         
         succ,test_result = TestProxy.testOnePicture(projectname,tag,param,tf_pic_array,[os.path.basename(pt) for pt in file_list],len(pic_array_list))
-        print(test_result)
+        #print(test_result)
         """
         if not succ:
             continue
