@@ -24,14 +24,15 @@ class CoachProxy:
     def createDir(projectname,tag):
         if not tag:
             tag = CoachProxy.getTimeStamp()
+
+            dir = PathProxy.getModelDir(projectname) + tag + "/"
+            PathProxy.mkdir(dir)
+
             setting = CNNDivSetting(projectname)
             param = CNNDivParam(projectname,tag)
         
             setting.copy2(param)
             CoachProxy.recordClasses(param,projectname)
-
-            dir = PathProxy.getModelDir(projectname) + tag + "/"
-            PathProxy.mkdir(dir)
         else:
             dir = PathProxy.getModelDir(projectname) + tag + "/"
         return dir,tag
