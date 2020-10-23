@@ -122,7 +122,7 @@ class CoachProxy:
     启动前记录训练参数
     """
     def recordClasses(paramcfg,projectname):
-        modeltype = param.Type()
+        modeltype = paramcfg.Type()
         if modeltype == "cnn-div":
             
             classes = ClassProxy.getClasses(projectname)
