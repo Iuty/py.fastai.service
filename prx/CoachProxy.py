@@ -263,10 +263,12 @@ class CoachProxy:
             
             self.curstep = 0
             print("Can not load ckpt")
-        self.sess.graph.as_default()   
+         
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
+
+        self.sess.graph.as_default()  
 
         self.coord = tf.train.Coordinator()
         self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
