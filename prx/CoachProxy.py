@@ -244,12 +244,13 @@ class CoachProxy:
         
         self.saver = tf.train.Saver()
 
-        ckpt = tf.train.get_checkpoint_state(self.savedir)    
+        ckpt = tf.train.get_checkpoint_state(self.savedir)
+        print(ckpt)    
         if ckpt and ckpt.model_checkpoint_path:
             model_name = ckpt.model_checkpoint_path.split('\\')[-1]
             global_step = model_name.split('-')[-1]
             saverpath = os.path.join(self.savedir,model_name)
-            self.saver.restore(sess, saverpath)
+            self.saver.restore(self.sess, saverpath)
             self.curstep = int(global_step)
             print('Loading success, global_step is %s' % global_step)
                     
@@ -258,6 +259,7 @@ class CoachProxy:
             PathProxy.mkdir(self.logdir)
             
             self.curstep = 0
+            print("Can not load ckpt")
                 
         
         self.sess.graph.as_default()
