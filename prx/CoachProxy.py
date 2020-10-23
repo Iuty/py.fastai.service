@@ -247,7 +247,11 @@ class CoachProxy:
 
         self.saver = tf.train.Saver()
         ckpt = tf.train.get_checkpoint_state(self.savedir)
-           
+        
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
+
+        self.sess.graph.as_default()    
         if ckpt and ckpt.model_checkpoint_path:
             model_name = ckpt.model_checkpoint_path.split('\\')[-1]
             global_step = model_name.split('-')[-1]
@@ -265,10 +269,7 @@ class CoachProxy:
             print("Can not load ckpt")
          
 
-        self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
-
-        self.sess.graph.as_default()  
+ 
 
         self.coord = tf.train.Coordinator()
         self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
