@@ -260,7 +260,7 @@ class CoachProxy:
             self.curstep = 0
                 
         
-        sess.graph.as_default()
+        self.sess.graph.as_default()
               
         self.coord = tf.train.Coordinator()
         self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
