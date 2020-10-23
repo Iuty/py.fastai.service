@@ -240,6 +240,7 @@ class CoachProxy:
         self.sess.run(tf.global_variables_initializer())
         
         self.savedir = os.path.join(modelpath,"saver")
+        print(self.savedir)
         self.logdir = os.path.join(modelpath,"log")
         
         self.saver = tf.train.Saver()
