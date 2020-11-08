@@ -11,6 +11,7 @@ def getLogit(config,image_batch,batch_size):
     imgd = config.Depth()
     if config.GroupEnable():
         imgd = len(config.Groups())
+        imgd += (imgd * (imgd-1))//2
     conv1_depth = config.Conv1Depth()
     conv2_depth = config.Conv2Depth()
     class_count = len(config.Classes())
