@@ -117,7 +117,7 @@ def readGroup(config,files):
                 image_diff = image-img_group[ig]
                 img_group.append(image_diff)
         img_group.append(image)
-    image_group = tf.reshape(img_group,[imgw,imgh,len(groups)])
+    image_group = tf.reshape(img_group,[imgw,imgh,len(img_group)])
     
     return image_group
 
