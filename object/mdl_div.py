@@ -18,10 +18,10 @@ def getLogit(config,image_batch,batch_size):
     
     
     with tf.variable_scope('conv1') as scope:
-        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, imgd, conv1_depth], stddev=1.0, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, imgd, conv1_depth*imgd], stddev=1.0, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
         
-        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[conv1_depth]),
+        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[conv1_depth*imgd]),
                             name='biases', dtype=tf.float32)
         
         conv = tf.nn.conv2d(image_batch, weights, strides=[1, 1, 1, 1], padding='SAME')
@@ -38,10 +38,10 @@ def getLogit(config,image_batch,batch_size):
     # 卷积层2
     # 16个3x3的卷积核（16通道），padding=’SAME’，表示padding后卷积的图与原图尺寸一致，激活函数relu()
     with tf.variable_scope('conv2') as scope:
-        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, conv1_depth, conv2_depth], stddev=0.1, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[3, 3, conv1_depth*imgd, conv2_depth*imgd], stddev=0.1, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
 
-        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[conv2_depth]),
+        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[conv2_depth*imgd]),
                             name='biases', dtype=tf.float32)
 
         conv = tf.nn.conv2d(norm1, weights, strides=[1, 1, 1, 1], padding='SAME')
@@ -60,20 +60,20 @@ def getLogit(config,image_batch,batch_size):
     with tf.variable_scope('local3') as scope:
         reshape = tf.reshape(pool2, shape=[batch_size, -1])
         dim = reshape.get_shape()[1].value
-        weights = tf.Variable(tf.truncated_normal(shape=[dim, class_count*4], stddev=0.005, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[dim, imgd*class_count*class_count], stddev=0.005, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
 
-        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[class_count*4]),
+        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[imgd*class_count*class_count]),
                             name='biases', dtype=tf.float32)
         local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
 
     # 全连接层4
     # 128个神经元，激活函数relu()
     with tf.variable_scope('local4') as scope:
-        weights = tf.Variable(tf.truncated_normal(shape=[class_count*4, class_count*4], stddev=0.005, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[imgd*class_count*class_count, imgd*class_count], stddev=0.005, dtype=tf.float32),
                             name='weights', dtype=tf.float32)
 
-        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[class_count*4]),
+        biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[imgd*class_count]),
                             name='biases', dtype=tf.float32)
 
         local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name='local4')
@@ -85,7 +85,7 @@ def getLogit(config,image_batch,batch_size):
     # Softmax回归层
     # 将前面的FC层输出，做一个线性回归，计算出每一类的得分
     with tf.variable_scope('softmax_linear') as scope:
-        weights = tf.Variable(tf.truncated_normal(shape=[class_count*4, class_count], stddev=0.005, dtype=tf.float32),
+        weights = tf.Variable(tf.truncated_normal(shape=[imgd*class_count, class_count], stddev=0.005, dtype=tf.float32),
                             name='softmax_linear', dtype=tf.float32)
 
         biases = tf.Variable(tf.constant(value=0.1, dtype=tf.float32, shape=[class_count]),
