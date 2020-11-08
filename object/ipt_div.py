@@ -113,6 +113,9 @@ def readGroup(config,files):
         image_contents = tf.read_file(img_content)
         if imgf == "bmp":
             image=tf.image.decode_bmp(image_contents)
+            for ig in img_group:
+                image_diff = image-ig
+                img_group.append(image_diff)
         img_group.append(image)
     image_group = tf.reshape(img_group,[imgw,imgh,len(groups)])
     
