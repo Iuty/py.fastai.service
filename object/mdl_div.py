@@ -11,7 +11,7 @@ def getLogit(config,image_batch,batch_size):
     imgd = config.Depth()
     if config.GroupEnable():
         imgd = len(config.Groups())
-        imgd += (imgd * (imgd-1))//2
+        #imgd += (imgd * (imgd-1))//2
     conv1_depth = config.Conv1Depth()
     conv2_depth = config.Conv2Depth()
     class_count = len(config.Classes())
@@ -32,7 +32,7 @@ def getLogit(config,image_batch,batch_size):
     # 池化层1
     # 3x3最大池化，步长strides为2，池化后执行lrn()操作，局部响应归一化，对训练有利。
     with tf.variable_scope('pooling1_lrn') as scope:
-        pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling1')
+        pool1 = tf.nn.avg_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling1')
         norm1 = tf.nn.lrn(pool1, depth_radius=4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
     
     # 卷积层2
