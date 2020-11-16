@@ -105,7 +105,7 @@ def readGroup(config,files):
     imgf = config.Formatter()
     groups = config.Groups()
     img_group = []
-    
+    diff_group = []
     for k in groups:
         apd = tf.constant("_"+groups[k]+"."+imgf,dtype=tf.string)
         #content = tf.constant(files,shape=files.shape,dtype=tf.string)
@@ -113,8 +113,12 @@ def readGroup(config,files):
         image_contents = tf.read_file(img_content)
         if imgf == "bmp":
             image=tf.image.decode_bmp(image_contents)
+            for ig in range(len(img_group)):
+                image_diff = image-img_group[ig]
+                diff_group.append(image_diff)
         img_group.append(image)
-    image_group = tf.reshape(img_group,[imgw,imgh,len(groups)])
+    #img_group += diff_group
+    image_group = tf.reshape(img_group,[imgw,imgh,len(img_group)])
     
     return image_group
 

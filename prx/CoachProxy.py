@@ -24,11 +24,22 @@ class CoachProxy:
     def createDir(projectname,tag):
         if not tag:
             tag = CoachProxy.getTimeStamp()
-        dir = PathProxy.getModelDir(projectname) + tag + "/"
-        PathProxy.mkdir(dir)
+
+            dir = PathProxy.getModelDir(projectname) + tag + "/"
+            PathProxy.mkdir(dir)
+
+            setting = CNNDivSetting(projectname)
+            param = CNNDivParam(projectname,tag)
+        
+            setting.copy2(param)
+            CoachProxy.recordClasses(param,projectname)
+        else:
+            dir = PathProxy.getModelDir(projectname) + tag + "/"
         return dir,tag
-    
+        
+
     def init(projectname,tag):
+        CoachProxy.killTensorBoard()
         modelpath,tag = CoachProxy.createDir(projectname,tag)
         rtn = ins_CoachProxy.initTrain(projectname,tag)
         
@@ -111,7 +122,8 @@ class CoachProxy:
     """
     启动前记录训练参数
     """
-    def recordClasses(modeltype,paramcfg,projectname):
+    def recordClasses(paramcfg,projectname):
+        modeltype = paramcfg.Type()
         if modeltype == "cnn-div":
             
             classes = ClassProxy.getClasses(projectname)
@@ -169,16 +181,14 @@ class CoachProxy:
         pass
     
     def initTrain(self,projectname,tag):
-        setting = CNNDivSetting(projectname)
-        param = CNNDivParam(projectname,tag)
         
-        setting.copy2(param)
+        param = CNNDivParam(projectname,tag)
         
         modeltype = param.Type()
         modelpath = PathProxy.getModelTagDir(projectname,tag)
         if modeltype == "cnn-div":
             
-            CoachProxy.recordClasses(modeltype,param,projectname)
+            
             train_dir = PathProxy.getProjectTrainDir(projectname)
             train_images,train_labels = CoachProxy.getInput(modeltype,param,train_dir)
             
@@ -227,25 +237,51 @@ class CoachProxy:
             list_merge.append(sc)
         self.summary_op = tf.summary.merge(list_merge)
         
+        
+        
+        self.savedir = os.path.join(modelpath,"saver")
+        
+        self.logdir = os.path.join(modelpath,"log")
+        
+        
+
+        self.saver = tf.train.Saver()
+        ckpt = tf.train.get_checkpoint_state(self.savedir)
+        
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver()
-        
+
+        self.sess.graph.as_default()    
+        if ckpt and ckpt.model_checkpoint_path:
+            model_name = ckpt.model_checkpoint_path.split('\\')[-1]
+            global_step = model_name.split('-')[-1]
+            saverpath = os.path.join(self.savedir,model_name)
+            self.saver.restore(self.sess, saverpath)
+            self.curstep = int(global_step)
+            print('Loading success, global_step is %s' % global_step)
+                    
+        else:
+            
+            PathProxy.mkdir(self.savedir)        
+            PathProxy.mkdir(self.logdir)
+            
+            self.curstep = 0
+            print("Can not load ckpt")
+         
+
+ 
+
         self.coord = tf.train.Coordinator()
         self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
         
         self.period = param.Period()
         self.saveperiod = param.SavePeriod()
         self.maxperiod = param.MaxPeriod()
-        self.curstep = 0
+        
         
         self.runflag = True
         
-        self.savedir = os.path.join(modelpath,"saver")
-        PathProxy.mkdir(self.savedir)
         
-        self.logdir = os.path.join(modelpath,"log")
-        PathProxy.mkdir(self.logdir)
         
         self.writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
         #print(CoachProxy.getInput(modeltype,param,train_dir))
