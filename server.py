@@ -16,6 +16,7 @@ from api.project_ import *
 from api.class_ import *
 from api.train_ import *
 from api.test_ import *
+from api.fastcnn_ import *
 
 app_path = PathProxy.app_path
 project_path = PathProxy.project_path
@@ -31,6 +32,7 @@ app = Flask(__name__)
 api = Api(app)
 CORS(app,supports_credentials=True)
 
+api.add_resource(FastCnnApi,'/api/nn/fastcnn')
 api.add_resource(ProjectApi,'/api/project')
 api.add_resource(ClassApi,'/api/class')
 
